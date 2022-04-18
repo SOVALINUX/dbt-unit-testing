@@ -1,5 +1,5 @@
 {% macro n_days_ago(days=0) %}
-  {{ return (modules.datetime.datetime.now() - modules.datetime.timedelta(days)) }}
+  {{ return (modules.datetime.datetime.utcnow() - modules.datetime.timedelta(days)) }}
 {% endmacro %}
 
 {% macro to_epoch(dt) %}
