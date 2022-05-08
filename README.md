@@ -293,7 +293,7 @@ CSV output handy to compare line by line, while JSON can show the type differenc
 
 ## Known Limitations
 
-- It's not possible to have a *model* with the same name as a *source* or a *seed*.
+Not yet :)
 
 ## Compatibility
 
