@@ -10,6 +10,10 @@
   {{ return ((dt - modules.datetime.datetime.utcfromtimestamp(0)).total_seconds() * 1000) }}
 {% endmacro %}
 
+{% macro to_micros(dt) %}
+  {{ return ((dt - modules.datetime.datetime.utcfromtimestamp(0)).total_seconds() * 1000000) }}
+{% endmacro %}
+
 {% macro to_posix(dt) %}
   {{ return (dt - modules.datetime.datetime.utcfromtimestamp(0)).total_seconds() }}
 {% endmacro %}
@@ -24,6 +28,7 @@
     {% do result.update({'-' ~ ind ~ 'd_dt': dbt_unit_testing.n_days_ago(days=ind, now_posixtime=now_posixtime)}) %}
     {% do result.update({'-' ~ ind ~ 'd_epoch': dbt_unit_testing.to_epoch(result['-' ~ ind ~ 'd_dt'])}) %}
     {% do result.update({'-' ~ ind ~ 'd_posix': dbt_unit_testing.to_posix(result['-' ~ ind ~ 'd_dt'])}) %}
+    {% do result.update({'-' ~ ind ~ 'd_micros': dbt_unit_testing.to_micros(result['-' ~ ind ~ 'd_dt'])}) %}
   {% endfor %}
   {{ return ( result ) }}
 {% endmacro %}
