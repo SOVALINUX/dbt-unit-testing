@@ -159,10 +159,6 @@
     {{ dbt_utils.except() }}
     select '-' as diff, {{columns}} from actual)
     
-<<<<<<< HEAD
-    
-=======
->>>>>>> d3d69ff (Add ability to sort failed outputs by primary key for readability (#64))
     select * from extra_entries
     UNION ALL
     select * from missing_entries
@@ -170,10 +166,6 @@
     {% if sort_field %}
     ORDER BY {{ sort_field }}
     {% endif %}
-<<<<<<< HEAD
-
-=======
->>>>>>> d3d69ff (Add ability to sort failed outputs by primary key for readability (#64))
   {%- endset -%}
 
   {% if execute and executed_command == 'test' %}
