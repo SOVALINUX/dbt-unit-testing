@@ -88,10 +88,18 @@
   {{ return (unit_tests_config.get(config_name, default_value))}}
 {% endmacro %}
 
+{% macro get_test_config(config_name, default_value) %}
+  {% set config_value = config.get(config_name) %}
+  {% if config_value is none or (config_value | string | length < 1) %}
+    {% set config_value = (default_value | string) %}
+  {% endif %}
+  {{ return (config_value | string) }}
+{% endmacro %}
+
 {% macro get_mocking_strategy(options) %}
-  {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL')) %}
+  {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_test_config("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL'))) %}
   {% if mocking_strategy | upper not in ['FULL', 'SIMPLIFIED', 'DATABASE', 'PURE']%}
-    {{ exceptions.raise_compiler_error("Invalid mocking strategy: " ~ mocking_strategy) }}
+    {{ exceptions.raise_compiler_error("Invalid mocking strategy: '" ~ mocking_strategy ~ "'") }}
   {% endif%}
   {% set full = mocking_strategy | upper == 'FULL' %}
   {% set simplified = mocking_strategy | upper == 'SIMPLIFIED' %}
