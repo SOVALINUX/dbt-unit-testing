@@ -1,5 +1,5 @@
 name: 'dbt_unit_testing'
-version: '0.1.28'
+version: '0.1.29'
 config-version: 2
 
 require-dbt-version: [">=0.20.2"]
