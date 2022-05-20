@@ -8,6 +8,7 @@
   {% set line_separator = options.get("line_separator", unit_tests_config.get("line_separator", "\n")) %}
   {% set type_separator = options.get("type_separator", unit_tests_config.get("type_separator", "::")) %}
   {% set quote_symbol_to_wrap_values = options.get("quote_symbol_to_wrap_values", unit_tests_config.get("quote_symbol_to_wrap_values", "")) %}
+  {% set symbol_to_unwrap_values = options.get("symbol_to_unwrap_values", unit_tests_config.get("symbol_to_unwrap_values", "")) %}
   {% set types_to_not_wrap = options.get("types_to_not_wrap", unit_tests_config.get("types_to_not_wrap", [])) %}
   {% set ns = namespace(col_names=[], col_types = [], col_values = [], row_values=[]) %}
 
@@ -25,11 +26,15 @@
     {% set cols = row.split(column_separator) | map('trim') | list %}
     {% set ns.col_values = [] %}
     {% for col in cols %}
-      {% set col_value = quote_symbol_to_wrap_values ~ col ~ quote_symbol_to_wrap_values %}
+      {% set col_value_unwrapped = col %}
+      {% if symbol_to_unwrap_values | length > 0 and col[0] == symbol_to_unwrap_values and col[-1] == symbol_to_unwrap_values %}
+        {% set col_value_unwrapped = col | replace(symbol_to_unwrap_values, '', 0) %}
+      {% endif %}
+      {% set col_value = quote_symbol_to_wrap_values ~ col_value_unwrapped ~ quote_symbol_to_wrap_values %}
       {% set col_type = ns.col_types[loop.index-1] %}
       {% if col_type is defined %}
         {% if col_type in types_to_not_wrap %}
-          {% set col_value = col %}
+          {% set col_value = col_value_unwrapped %}
         {% endif %}
         {% set col_value = "CAST(" ~ col_value ~ " as " ~ col_type ~ ")" %}
       {% endif %}
