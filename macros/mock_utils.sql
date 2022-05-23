@@ -82,8 +82,13 @@
         {% set rs.next_value = lt %}
       {% else %}
         {% if rs.next_is_key %}
-          {% do rs.current_row.update({t: rs.next_value}) %}
-          {% set rs.next_value = '' %}
+          {% if t[0:1] == '(' %}
+            {% set rs.next_value = rs.next_value + t %}
+            {% set rs.next_is_key = not rs.next_is_key %}
+          {% else %}
+            {% do rs.current_row.update({t: rs.next_value}) %}
+            {% set rs.next_value = '' %}
+          {% endif %}
         {% else %}
           {% set rs.next_value = rs.next_value + t %}
         {% endif %}
