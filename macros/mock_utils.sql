@@ -10,7 +10,6 @@
             {% set ns.terms = ns.terms + [ns.current_term] %}
           {% endif %}
           {% set ns.current_term = '' %}
-          {% do log("DBT-SN reset current_term") %}
         {% endif %}
         {% set ns.prev_is_whitespace = true %}
       {% else %}
