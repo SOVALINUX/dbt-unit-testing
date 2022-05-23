@@ -48,6 +48,10 @@
 
     {% set input_values_sql = input_values %}
 
+    {% if input_format == "transformed_sql" %}
+      {% set input_values_sql = dbt_unit_testing.parse_sql_with_transformations(input_values, options) %}
+    {%- endif -%}
+
     {% if input_format == "csv" %}
       {% set input_values_sql = dbt_unit_testing.sql_from_csv_input(input_values, options) %}
     {%- endif -%}
