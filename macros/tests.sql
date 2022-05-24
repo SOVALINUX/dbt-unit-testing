@@ -70,6 +70,7 @@
 
 {% macro mock_input(model_name, source_name, input_values, options) %}
   {% if execute %}
+    {{ dbt_unit_testing.debug("DBT Unit Testing mock input: model = '" ~ model_name ~ "', source = '" ~ source_name ~ "', options = " ~ options) }}
     {% set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) %}
     {% set input_values_sql = dbt_unit_testing.build_input_values_sql(input_values, options) %}
     {% set mock_sql %}
@@ -127,6 +128,7 @@
 {% endmacro %}
 
 {% macro run_test(model_name, test_description, mocked_models, expectations, options) %}
+  {{ dbt_unit_testing.debug("DBT Unit Testing run test: " ~ model_name) }}
   {% set hide_errors = options.get("hide_errors", false) %}
   {% set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) %}
 
@@ -173,11 +175,9 @@
   {%- endset -%}
 
   {% if execute and executed_command == 'test' %}
-    {% if var('debug', false) or dbt_unit_testing.get_config('debug', false) %}
-      {{ dbt_unit_testing.debug("------------------------------------") }}
-      {{ dbt_unit_testing.debug("MODEL: " ~ model_name) }}
-      {{ dbt_unit_testing.debug(test_query) }}
-    {% endif %}
+    {{ dbt_unit_testing.debug("------------------------------------") }}
+    {{ dbt_unit_testing.debug("MODEL: " ~ model_name) }}
+    {{ dbt_unit_testing.debug(test_query) }}
 
     {%- set count_query -%}
       select * FROM (select count(1) as expectation_count from (

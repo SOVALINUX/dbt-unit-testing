@@ -1,4 +1,5 @@
 {% macro parse_sql_with_transformations(input_str, options={}) %}
+  {% set debug_flag = if var('debug', false) or dbt_unit_testing.get_config('debug', false) %}
   {% set ns = namespace(prev_symbol = '', terms = [], current_term = '', prev_is_escape = false, prev_is_whitespace = false, active_string_term = false, num_of_opened_brackets = 0, got_first_term = false, prev_is_dash = false, prev_is_asterisk = false, is_comment = false, comment_type = '', prev_is_slash = false) %}
   {% set input_str = (input_str + ' ') %}
   {% for s in input_str %}
@@ -55,7 +56,9 @@
    {% set ns.prev_is_dash = (s == "-") %}
    {% set ns.prev_is_slash = (s == "/") %}
    {% set ns.prev_is_asterisk = (s == "*") %}
-    {# do log("DBT Unit Testing parse SQL, symbol = '" ~ s ~ "', prev = '" ~ ns.prev_symbol ~ "', prev is escape = " ~ ns.prev_is_escape ~ ", prev is whitespace = " ~ ns.prev_is_whitespace ~ ", active_string_term = " ~ ns.active_string_term ~ ", current_term = '" ~ ns.current_term ~ "', num_of_opened_brackets = " ~ ns.num_of_opened_brackets ~ ", got_first_term = " ~ ns.got_first_term ~ ", prev_dash = " ~ ns.prev_is_dash ~ ", is comment = " ~ ns.is_comment ~ ", terms = '" ~ ns.terms ~ "'") #}
+   {% if debug_flag %}
+     {% do log("DBT Unit Testing: Transformed SQL parsing. Symbol = '" ~ s ~ "', prev symbol = '" ~ ns.prev_symbol ~ "', prev is escape = " ~ ns.prev_is_escape ~ ", prev is whitespace = " ~ ns.prev_is_whitespace ~ ", active_string_term = " ~ ns.active_string_term ~ ", current_term = '" ~ ns.current_term ~ "', num_of_opened_brackets = " ~ ns.num_of_opened_brackets ~ ", got_first_term = " ~ ns.got_first_term ~ ", prev_dash = " ~ ns.prev_is_dash ~ ", is comment = " ~ ns.is_comment ~ ", terms = '" ~ ns.terms ~ "'") %}
+   {% endif %}
     {% set ns.prev_symbol = s %}
   {% endfor %}
   {% set nullish_columns = options.get("nullish_columns", '').split(',') | map('trim') | reject('==', '') | list %}
@@ -93,13 +96,17 @@
         {% endif %}
         {% set rs.next_is_key = not rs.next_is_key %}
       {% endif %}
-      {# do log("DBT Unit Testing parse TERMS, term lower = " ~ lt ~ ", next_value = " ~ rs.next_value ~ ", next is key = " ~ rs.next_is_key ~ "', cur row index = '" ~ rs.current_row_index ~ "', cur row = " ~ rs.current_row ~ ", rows = " ~ rs.rows) #}
+      {% if debug_flag %}
+        {% do log("DBT Unit Testing: Transformed SQL next TERM. Term lower = " ~ lt ~ ", next_value = " ~ rs.next_value ~ ", next is key = " ~ rs.next_is_key ~ "', current row index = '" ~ rs.current_row_index ~ "', current row = " ~ rs.current_row ~ ", rows = " ~ rs.rows) %}
+      {% endif %}
     {% endif %}
     {% if loop.last %}
       {% set rs.rows = rs.rows + [rs.current_row] %}
     {% endif %}
   {% endfor %}
-  {# do log("DBT Unit Testing Terms parsed rows = " ~ rs.rows ~ ", nullish columns = " ~ nullish_columns) #}
+  {% if debug_flag %}
+    {% do log("DBT Unit Testing: Transformed SQL rows parsed. Rows = " ~ rs.rows ~ ", nullish columns = " ~ nullish_columns) %}
+  {% endif %}
   {% set fs = namespace(final_sql = '') %}
   {% for r in rs.rows %}
     {% set columns = r.keys() | sort %}
@@ -115,7 +122,9 @@
       {% endif %}
     {% endfor %}
   {% endfor %}
-  {# do log("DBT Unit Testing Parser final SQL = \n" ~ fs.final_sql) #}
+  {% if debug_flag %}
+    {% do log("DBT Unit Testing: Transformed SQL parsed. Final SQL = \n" ~ fs.final_sql) %}
+  {% endif %}
   {{ return (fs.final_sql) }}
 {% endmacro %}
 
