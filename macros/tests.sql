@@ -128,7 +128,7 @@
 {% endmacro %}
 
 {% macro run_test(model_name, test_description, mocked_models, expectations, options) %}
-  {{ dbt_unit_testing.debug("DBT Unit Testing run test: " ~ model_name) }}
+  {{ dbt_unit_testing.debug("DBT Unit Testing run test parsing: " ~ model_name) }}
   {% set hide_errors = options.get("hide_errors", false) %}
   {% set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) %}
 

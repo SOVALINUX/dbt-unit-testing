@@ -1,5 +1,5 @@
 {% macro parse_sql_with_transformations(input_str, options={}) %}
-  {% set debug_flag = if var('debug', false) or dbt_unit_testing.get_config('debug', false) %}
+  {% set debug_flag = var('debug', false) or dbt_unit_testing.get_config('debug', false) %}
   {% set ns = namespace(prev_symbol = '', terms = [], current_term = '', prev_is_escape = false, prev_is_whitespace = false, active_string_term = false, num_of_opened_brackets = 0, got_first_term = false, prev_is_dash = false, prev_is_asterisk = false, is_comment = false, comment_type = '', prev_is_slash = false) %}
   {% set input_str = (input_str + ' ') %}
   {% for s in input_str %}

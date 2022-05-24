@@ -20,7 +20,7 @@
 
 {% macro generate_n_days_ago_variables(now_posixtime=0) %}
   {% set result = {} %}
-  {% for ind in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 50, 100, 200, 300, 500, 1000] %}
+  {% for ind in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 500, 1000] %}
     {% do result.update({'-' ~ ind ~ 'd_dt': dbt_unit_testing.n_days_ago(days=ind, now_posixtime=now_posixtime)}) %}
     {% do result.update({'+' ~ ind ~ 'd_dt': dbt_unit_testing.n_days_ago(days=ind, now_posixtime=now_posixtime)}) %}
     {% do result.update({'-' ~ ind ~ 'd_date': result['-' ~ ind ~ 'd_dt'].strftime('%Y-%m-%d')}) %}
