@@ -174,7 +174,7 @@
     {% endif %}
   {%- endset -%}
 
-  {% if execute and executed_command == 'test' %}
+  {% if execute and flags.WHICH == 'test' %}
     {{ dbt_unit_testing.debug("------------------------------------") }}
     {{ dbt_unit_testing.debug("MODEL: " ~ model_name) }}
     {{ dbt_unit_testing.debug(test_query) }}
@@ -197,15 +197,26 @@
     {% if failed and not hide_errors %}
       {%- do log('\x1b[31m' ~ 'MODEL: ' ~ model_name ~ '\x1b[0m', info=true) -%}
       {%- do log('\x1b[31m' ~ 'TEST:  ' ~ test_description ~ '\x1b[0m', info=true) -%}
-      {% set report_file = 'target/unit_tests/' ~ model_name ~ '-' ~ modules.re.sub("[^-_a-zA-Z0-9]", "_", test_description) %}
-      {%- do log('\x1b[31m' ~ 'REPORT FILE:  ' ~ report_file ~ '\x1b[0m', info=true) -%}
+      {%- set report_file = 'target/unit_testing/failures/' ~ model_name ~ '-' ~ modules.re.sub("[^-_a-zA-Z0-9]", "_", test_description) -%}
+      {%- set csv_report_file = report_file ~ '.csv' -%}
+      {%- set json_report_file = report_file ~ '.json' -%}
+      {%- if dbt_unit_testing.get_config('generate_fail_report_in_csv', false) -%}
+        {%- do log('\x1b[31m' ~ 'CSV REPORT FILE:  ' ~ csv_report_file ~ '\x1b[0m', info=true) -%}
+      {%- endif -%}
+      {%- if dbt_unit_testing.get_config('generate_fail_report_in_json', false) -%}
+        {%- do log('\x1b[31m' ~ 'JSON REPORT FILE:  ' ~ json_report_file ~ '\x1b[0m', info=true) -%}
+      {%- endif -%}
       {% if expectations_row_count != actual_row_count %}
         {%- do log('\x1b[31m' ~ 'Number of Rows do not match! (Expected: ' ~ expectations_row_count ~ ', Actual: ' ~ actual_row_count ~ ')' ~ '\x1b[0m', info=true) -%}
       {% endif %}
       {% if results_length > 0 %}
         {%- do log('\x1b[31m' ~ 'Rows mismatch:' ~ '\x1b[0m', info=true) -%}
-        {% do results.to_csv(report_file ~ '.csv') %}
-        {% do results.to_json(report_file ~ '.json', indent=4) %}
+        {%- if dbt_unit_testing.get_config('generate_fail_report_in_csv', false) -%}
+          {% do results.to_csv(csv_report_file) %}
+        {%- endif -%}
+        {%- if dbt_unit_testing.get_config('generate_fail_report_in_json', false) -%}
+          {% do results.to_json(json_report_file, indent=4) %}
+        {%- endif -%}
         {% do results.print_table(max_columns=None, max_column_width=30) %}
       {% endif %}
     {% endif %}
