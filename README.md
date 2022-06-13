@@ -316,8 +316,19 @@ TEST:  Test country name join
 ```
 
 The first line was not on the model but the second line was.
-Also such example is stored in `target/unit_tests/` folder in CSV and JSON formats.  
-CSV output handy to compare line by line, while JSON can show the type difference (null vs empty string, 1 as number and 1 as string, etc.)
+##### Test failures as files
+There is also possible to save failed Unit Tests to file system and review separately.  
+Currently 2 formats of reports supported:  
+1. CSV. It's very convenient to compare multi-column unit test failures as CSV, especially with some Rainbow CSV plugin
+2. JSON. It's useful only for cases when there is a type mismatch (number vs text, null vs empty string)
+To enable report generation add the following to the config and configure per each format separately:
+```yaml
+vars:
+  unit_tests_config:
+    generate_fail_report_in_json: true
+	generate_fail_report_in_csv: true
+```
+Failed test result will be stored in `target/unit_testing/failures/` folder respective file formats.  
 
 ## Known Limitations
 
