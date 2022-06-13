@@ -237,22 +237,38 @@ When you are creating a mock for a unit test, usually you will not need all the 
 ```
 
 To improve the readability of the tests, the clarity and the development workflow the framework can inspect your documentation or your database and create this boilerplate for you. It comes with a price, increasing the test execution time by making extra db calls or more complex queries.
+<<<<<<< HEAD
 
 There is a configurable Mocking Strategy setting that you can use and decide if you prefer to have clear/friendly tests or faster and simpler tests.
 
 The available Mocking Strategies are the following:
 
+=======
+
+There is a configurable Mocking Strategy setting that you can use and decide if you prefer to have clear/friendly tests or faster and simpler tests.
+
+The available Mocking Strategies are the following:
+
+>>>>>>> d9c4636 (Add pure mocking strategy (#70))
 - *`Pure`*
 - *`Full`*
 - *`Simplified`*
 - *`Database`*
 
 The *`Pure`* strategy provides the fastest test execution, you'll need to have the required columns in the mocks, although it's the faster and simpler strategy.
+<<<<<<< HEAD
 
 The *`Full`* strategy provides the best developer experience by mocking all the models with the SQL that's on each model's file. There is no need to materialize the models in the database to run the tests, if you have the models, sources and seeds documented with column information. It can also infer the types of all the columns that are not used in a mocked model, preventing some type mismatches when running the tests.
 
 In some environments (particularly BigQuery), you may need to reduce query complexity or the number of db calls. There are reduced levels of complexity that you can specify when running tests, in decreasing order of complexity:
 
+=======
+
+The *`Full`* strategy provides the best developer experience by mocking all the models with the SQL that's on each model's file. There is no need to materialize the models in the database to run the tests, if you have the models, sources and seeds documented with column information. It can also infer the types of all the columns that are not used in a mocked model, preventing some type mismatches when running the tests.
+
+In some environments (particularly BigQuery), you may need to reduce query complexity or the number of db calls. There are reduced levels of complexity that you can specify when running tests, in decreasing order of complexity:
+
+>>>>>>> d9c4636 (Add pure mocking strategy (#70))
 The *`Simplified`* strategy builds less complex test queries but it doesn't infer the types of the columns as the `Full` strategy does. This means that sometimes you need to declare the column type in the mocking sql, even if you don't need that column in the test.
 
 The *`Database`* strategy generates the most simple queries because it uses the models in the database. This requires that all the models used by the model being tested must be previously materialized in the database (the only exception being the model being tested, which will always use the SQL from its file).

@@ -97,9 +97,15 @@
 {% endmacro %}
 
 {% macro get_mocking_strategy(options) %}
+<<<<<<< HEAD
   {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_test_config("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL'))) %}
   {% if mocking_strategy | upper not in ['FULL', 'SIMPLIFIED', 'DATABASE', 'PURE']%}
     {{ exceptions.raise_compiler_error("Invalid mocking strategy: '" ~ mocking_strategy ~ "'") }}
+=======
+  {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL')) %}
+  {% if mocking_strategy | upper not in ['FULL', 'SIMPLIFIED', 'DATABASE', 'PURE']%}
+    {{ exceptions.raise_compiler_error("Invalid mocking strategy: " ~ mocking_strategy) }}
+>>>>>>> d9c4636 (Add pure mocking strategy (#70))
   {% endif%}
   {% set full = mocking_strategy | upper == 'FULL' %}
   {% set simplified = mocking_strategy | upper == 'SIMPLIFIED' %}
