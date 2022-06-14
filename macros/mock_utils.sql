@@ -3,51 +3,52 @@
   {% if debug_flag %}
     {% do log("DBT Unit Testing: Initial SQL before transformation: " ~ input_str) %}
   {% endif %}
-  {% set ns = namespace(prev_symbol = '', terms = [], current_term = '', prev_is_escape = false, prev_is_whitespace = false, active_string_term = false, num_of_opened_brackets = 0, num_of_opened_square_brackets = 0, got_first_term = false, prev_is_dash = false, prev_is_asterisk = false, is_comment = false, comment_type = '', prev_is_slash = false) %}
+  {% set ns = namespace(prev_symbol = '', terms = [], current_term = '', prev_is_escape = false, prev_is_whitespace = false, active_string_term = false, prev_active_string_term = false, num_of_opened_brackets = 0, num_of_opened_square_brackets = 0, got_first_term = false, prev_is_dash = false, prev_is_asterisk = false, is_comment = false, comment_type = '', prev_is_slash = false) %}
   {% set input_str = (input_str + ' ') %}
   {% for s in input_str %}
-   {% if not ns.is_comment %}
-    {% if not ns.active_string_term %}
-      {% if s in [' ', '\t', '\n', '\r', ','] and ns.num_of_opened_brackets == 0 and ns.num_of_opened_square_brackets == 0 %}
-        {% if not ns.prev_is_whitespace and ns.got_first_term %}
-          {% if ns.current_term | length > 0 %}
-            {% set ns.terms = ns.terms + [ns.current_term] %}
+    {% set ns.prev_active_string_term = ns.active_string_term %}
+    {% if not ns.is_comment %}
+      {% if not ns.active_string_term %}
+        {% if s in [' ', '\t', '\n', '\r', ','] and ns.num_of_opened_brackets == 0 and ns.num_of_opened_square_brackets == 0 %}
+          {% if not ns.prev_is_whitespace and ns.got_first_term %}
+            {% if ns.current_term | length > 0 %}
+              {% set ns.terms = ns.terms + [ns.current_term] %}
+            {% endif %}
+            {% set ns.current_term = '' %}
           {% endif %}
-          {% set ns.current_term = '' %}
+          {% set ns.prev_is_whitespace = true %}
+        {% else %}
+          {% set ns.got_first_term = true %}
+          {% set ns.current_term = (ns.current_term + s) %}
+          {% set ns.prev_is_whitespace = false %}
         {% endif %}
-        {% set ns.prev_is_whitespace = true %}
+        {% if s == '(' %}
+          {% set ns.num_of_opened_brackets = (ns.num_of_opened_brackets + 1) %}
+        {% endif %}
+        {% if s == ')' %}
+          {% set ns.num_of_opened_brackets = (ns.num_of_opened_brackets - 1) %}
+        {% endif %}
+        {% if s == '[' %}
+          {% set ns.num_of_opened_square_brackets = (ns.num_of_opened_square_brackets + 1) %}
+        {% endif %}
+        {% if s == ']' %}
+          {% set ns.num_of_opened_square_brackets = (ns.num_of_opened_square_brackets - 1) %}
+        {% endif %}
+        {% if s == '-' and ns.prev_is_dash %}
+          {% set ns.is_comment = true %}
+          {% set ns.comment_type = 'single_line' %}
+        {% endif %}
+        {% if s == '*' and ns.prev_is_slash %}
+          {% set ns.is_comment = true %}
+          {% set ns.comment_type = 'multi_line' %}
+        {% endif %}
       {% else %}
-        {% set ns.got_first_term = true %}
         {% set ns.current_term = (ns.current_term + s) %}
-        {% set ns.prev_is_whitespace = false %}
       {% endif %}
-      {% if s == '(' %}
-        {% set ns.num_of_opened_brackets = (ns.num_of_opened_brackets + 1) %}
-      {% endif %}
-      {% if s == ')' %}
-        {% set ns.num_of_opened_brackets = (ns.num_of_opened_brackets - 1) %}
-      {% endif %}
-      {% if s == '[' %}
-        {% set ns.num_of_opened_square_brackets = (ns.num_of_opened_square_brackets + 1) %}
-      {% endif %}
-      {% if s == ']' %}
-        {% set ns.num_of_opened_square_brackets = (ns.num_of_opened_square_brackets - 1) %}
-      {% endif %}
-      {% if s == '-' and ns.prev_is_dash %}
-        {% set ns.is_comment = true %}
-        {% set ns.comment_type = 'single_line' %}
-      {% endif %}
-      {% if s == '*' and ns.prev_is_slash %}
-        {% set ns.is_comment = true %}
-        {% set ns.comment_type = 'multi_line' %}
+      {% if s == "'" and not ns.prev_is_escape %}
+        {% set ns.active_string_term = not ns.active_string_term %}
       {% endif %}
     {% else %}
-      {% set ns.current_term = (ns.current_term + s) %}
-    {% endif %}
-    {% if s == "'" and not ns.prev_is_escape %}
-      {% set ns.active_string_term = not ns.active_string_term %}
-    {% endif %}
-   {% else %}
       {% if s in ['\r', '\n'] and ns.comment_type == 'single_line' %}
         {% set ns.is_comment = false %}
         {% if ns.current_term | length >= 2 %}
@@ -60,16 +61,17 @@
           {% set ns.current_term = ns.current_term[:-2] %}
         {% endif %}
       {% endif %}
-   {% endif %}
-   {% set ns.prev_is_escape = (s == "'") %}
-   {% set ns.prev_is_dash = (s == "-") %}
-   {% set ns.prev_is_slash = (s == "/") %}
-   {% set ns.prev_is_asterisk = (s == "*") %}
-   {% if debug_flag %}
-     {% do log("DBT Unit Testing: Transformed SQL parsing. Symbol = '" ~ s ~ "', prev symbol = '" ~ ns.prev_symbol ~ "', prev is escape = " ~ ns.prev_is_escape ~ ", prev is whitespace = " ~ ns.prev_is_whitespace ~ ", active_string_term = " ~ ns.active_string_term ~ ", current_term = '" ~ ns.current_term ~ "', num_of_opened_brackets = " ~ ns.num_of_opened_brackets ~ ", opened square brackets = " ~ ns.num_of_opened_square_brackets ~ ", got_first_term = " ~ ns.got_first_term ~ ", prev_dash = " ~ ns.prev_is_dash ~ ", is comment = " ~ ns.is_comment ~ ", terms = '" ~ ns.terms ~ "'") %}
-   {% endif %}
+    {% endif %}
+    {% set ns.prev_is_escape = (s == "'" and ns.prev_active_string_term) %}
+    {% set ns.prev_is_dash = (s == "-") %}
+    {% set ns.prev_is_slash = (s == "/") %}
+    {% set ns.prev_is_asterisk = (s == "*") %}
+    {% if debug_flag %}
+      {% do log("DBT Unit Testing: Transformed SQL parsing. Symbol = '" ~ s ~ "', prev symbol = '" ~ ns.prev_symbol ~ "', prev is escape = " ~ ns.prev_is_escape ~ ", prev is whitespace = " ~ ns.prev_is_whitespace ~ ", active_string_term = " ~ ns.active_string_term ~ ", current_term = '" ~ ns.current_term ~ "', num_of_opened_brackets = " ~ ns.num_of_opened_brackets ~ ", opened square brackets = " ~ ns.num_of_opened_square_brackets ~ ", got_first_term = " ~ ns.got_first_term ~ ", prev_dash = " ~ ns.prev_is_dash ~ ", is comment = " ~ ns.is_comment ~ ", terms = '" ~ ns.terms ~ "'") %}
+    {% endif %}
     {% set ns.prev_symbol = s %}
   {% endfor %}
+
   {% set nullish_columns = options.get("nullish_columns", '').split(',') | map('trim') | reject('==', '') | list %}
   {% set rs = namespace(rows = [], current_row_index = -1, next_is_key = false, next_value = '', current_row = {}) %}
   {% for nc in nullish_columns %}
