@@ -6,24 +6,24 @@
   {% if execute %}
     {% set include_all_dependencies = options.get("include_all_dependencies", false) %}
 
-    {% set mocked_models_names = mocked_models.keys() | list %}
-    {% set cte_dependencies = [] %}
-    {% set dependencies_to_exclude = none if include_all_dependencies else mocked_models_names %}
-    {% set model_dependencies = dbt_unit_testing.build_model_dependencies(model_node, dependencies_to_exclude) %}
-    {% for node_id in model_dependencies %}
-      {% set node = dbt_unit_testing.node_by_id(node_id) %}
-      {% if node.resource_type == "source" %}
-        {% set cte_name = node.source_name ~ "__" ~ node.name %}
-      {% else %}
-        {% set cte_name = node.name %}
-      {% endif %}
-      {% if cte_name in mocked_models_names %}
-        {% set sql = mocked_models[cte_name] %}
-      {% else %}
-        {% set sql = dbt_unit_testing.build_node_sql(node, options) %}
-      {% endif %}
-      {% set cte = dbt_unit_testing.quote_identifier(cte_name) ~ " as (" ~ sql ~ "\n)" %}
-      {% set cte_dependencies = cte_dependencies.append(cte) %}
+    {%- set mocked_models_names = mocked_models.keys() | list %}
+    {%- set cte_dependencies = [] %}
+    {%- set dependencies_to_exclude = none if include_all_dependencies else mocked_models_names %}
+    {%- set model_dependencies = dbt_unit_testing.build_model_dependencies(model_node, dependencies_to_exclude) %}
+    {%- for node_id in model_dependencies %}
+      {%- set node = dbt_unit_testing.node_by_id(node_id) %}
+      {%- if node.resource_type == "source" %}
+        {%- set cte_name = node.source_name ~ "__" ~ node.name %}
+      {%- else %}
+        {%- set cte_name = node.name %}
+      {%- endif %}
+      {%- if cte_name in mocked_models_names %}
+        {%- set sql = mocked_models[cte_name] %}
+      {%- else %}
+        {%- set sql = dbt_unit_testing.build_node_sql(node, options) %}
+      {%- endif %}
+      {%- set cte = dbt_unit_testing.quote_identifier(cte_name) ~ " as (" ~ sql ~ "\n)" %}
+      {%- set cte_dependencies = cte_dependencies.append(cte) %}
     {%- endfor -%}
 
     {%- set final_sql -%}

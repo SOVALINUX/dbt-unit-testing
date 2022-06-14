@@ -4,25 +4,25 @@
 {% endmacro %}
 
 {% macro ref_tested_model(model_name) %}
-  {% set ref_tested_model %}
+  {%- set ref_tested_model -%}
     -- We add an (unused) reference to the tested model,
     -- so that DBT includes the model as a dependency of the test in the DAG
     select * from {{ ref(model_name) }}
-  {% endset %}
+  {%- endset -%}
 {% endmacro %}
 
 {% macro _test(model_name, test_description, test_info, options={}) %}
-    {% set test_description = test_description | default('(no description)') %}
-    {% set test_info = test_info | trim %}
-    {% set test_info_last_comma_removed = test_info[:-1] %}
-    {% set test_info_json = fromjson('{' ~ test_info_last_comma_removed ~ '}') %}
+    {%- set test_description = test_description | default('(no description)') -%}
+    {%- set test_info = test_info | trim -%}
+    {%- set test_info_last_comma_removed = test_info[:-1] -%}
+    {%- set test_info_json = fromjson('{' ~ test_info_last_comma_removed ~ '}') -%}
 
-    {% for k, v in test_info_json.items() %}
-      {% set dummy = test_info_json.update({k: dbt_unit_testing.sql_decode(v)}) %}
-    {% endfor %}
+    {%- for k, v in test_info_json.items() -%}
+      {%- set dummy = test_info_json.update({k: dbt_unit_testing.sql_decode(v)}) -%}
+    {%- endfor -%}
 
-    {% set expectations = test_info_json['__EXPECTATIONS__'] %}
-    {% set dummy = test_info_json.pop('__EXPECTATIONS__') %}
+    {%- set expectations = test_info_json['__EXPECTATIONS__'] -%}
+    {%- set dummy = test_info_json.pop('__EXPECTATIONS__') -%}
 
     {{ dbt_unit_testing.run_test(model_name, test_description, test_info_json, expectations, options)}}
 {% endmacro %}
@@ -44,23 +44,22 @@
 {% endmacro %}
 
 {% macro build_input_values_sql(input_values, options) %}
-    {% set input_format = options.get("input_format", dbt_unit_testing.get_config("input_format", "sql")) %}
+    {%- set input_format = options.get("input_format", dbt_unit_testing.get_config("input_format", "sql")) -%}
 
-    {% set input_values_sql = input_values %}
+    {%- set input_values_sql = input_values -%}
 
-    {% if input_format == "transformed_sql" %}
-      {% set input_values_sql = dbt_unit_testing.parse_sql_with_transformations(input_values, options) %}
+    {%- if input_format == "transformed_sql" %}
+      {%- set input_values_sql = dbt_unit_testing.parse_sql_with_transformations(input_values, options) -%}
     {%- endif -%}
 
-    {% if input_format == "csv" %}
-      {% set input_values_sql = dbt_unit_testing.sql_from_csv_input(input_values, options) %}
+    {%- if input_format == "csv" -%}
+      {%- set input_values_sql = dbt_unit_testing.sql_from_csv_input(input_values, options) -%}
     {%- endif -%}
 
     {{ return (input_values_sql) }}
 {% endmacro %}
 
 {% macro mock_ref(model_name, options={}) %}
-  
     {{ dbt_unit_testing.mock_input(model_name, '', caller(), options) }}
 {% endmacro %}
 
@@ -69,11 +68,11 @@
 {% endmacro %}
 
 {% macro mock_input(model_name, source_name, input_values, options) %}
-  {% if execute %}
+  {% if execute -%}
     {{ dbt_unit_testing.debug("DBT Unit Testing mock input: model = '" ~ model_name ~ "', source = '" ~ source_name ~ "', options = " ~ options) }}
-    {% set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) %}
-    {% set input_values_sql = dbt_unit_testing.build_input_values_sql(input_values, options) %}
-    {% set mock_sql %}
+    {%- set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) -%}
+    {%- set input_values_sql = dbt_unit_testing.build_input_values_sql(input_values, options) -%}
+    {%- set mock_sql -%}
       {%- if mocking_strategy.pure -%}
         {{input_values_sql}}
       {%- else -%}  
@@ -87,34 +86,34 @@
       {%- set model_key = [source_name, model_name]|join('__') -%}
     {%- endif -%}
 
-    {% set input_as_json = '"' ~ model_key  ~ '": "' ~ dbt_unit_testing.sql_encode(mock_sql) ~ '",' %}
+    {%- set input_as_json = '"' ~ model_key  ~ '": "' ~ dbt_unit_testing.sql_encode(mock_sql) ~ '",' %}
     {{ return (input_as_json) }}
   {% endif %}
 {% endmacro %}
 
 {% macro enrich_mock_sql_with_extra_columns(model_name, source_name, input_values_sql, options, mocking_strategy) %}
 
-  {% set model_node = dbt_unit_testing.graph_node(source_name, model_name) %}
+  {% set model_node = dbt_unit_testing.graph_node(source_name, model_name) -%}
 
-  {% set options = {"fetch_mode": 'DATABASE' if mocking_strategy.database else 'FULL' } %}
-  {% set full_node_sql = dbt_unit_testing.build_node_sql(model_node, options) %}
+  {%- set options = {"fetch_mode": 'DATABASE' if mocking_strategy.database else 'FULL' } -%}
+  {%- set full_node_sql = dbt_unit_testing.build_node_sql(model_node, options) -%}
 
-  {% set model_columns = dbt_unit_testing.extract_columns_list(full_node_sql) %}
-  {% set input_columns = dbt_unit_testing.extract_columns_list(input_values_sql) %}
-  {% set extra_columns = dbt_unit_testing.extract_columns_difference(model_columns, input_columns) %}
+  {%- set model_columns = dbt_unit_testing.extract_columns_list(full_node_sql) -%}
+  {%- set input_columns = dbt_unit_testing.extract_columns_list(input_values_sql) -%}
+  {%- set extra_columns = dbt_unit_testing.extract_columns_difference(model_columns, input_columns) -%}
 
   select * from (
     {{input_values_sql}}
   ) as {{ dbt_unit_testing.quote_identifier(model_name ~ '_tmp_1')}}
   {%- if extra_columns -%}
     {%- if mocking_strategy.simplified -%}
-      {% set null_extra_columns = [] %}
-      {% for c in extra_columns %}
-        {% set null_extra_columns = null_extra_columns.append("null as " ~ c) %}
-      {% endfor %}
+      {%- set null_extra_columns = [] -%}
+      {%- for c in extra_columns -%}
+        {%- set null_extra_columns = null_extra_columns.append("null as " ~ c) -%}
+      {%- endfor %}
       left join (select {{ null_extra_columns | join (",")}}) as {{ dbt_unit_testing.quote_identifier(model_name ~ '_tmp_3') }} on false
     {%- else -%}
-      {% set simple_node_sql = dbt_unit_testing.build_node_sql(model_node, {"fetch_mode": 'DATABASE' if mocking_strategy.database else 'RAW' }) %}
+      {%- set simple_node_sql = dbt_unit_testing.build_node_sql(model_node, {"fetch_mode": 'DATABASE' if mocking_strategy.database else 'RAW' }) %}
         left join (select {{ extra_columns | join (",")}}
                   from ({{ simple_node_sql }}) as {{ dbt_unit_testing.quote_identifier(model_name ~ '_tmp_2') }}) as {{ dbt_unit_testing.quote_identifier(model_name ~ '_tmp_3') }} on false
     {%- endif -%}
@@ -129,15 +128,15 @@
 
 {% macro run_test(model_name, test_description, mocked_models, expectations, options) %}
   {{ dbt_unit_testing.debug("DBT Unit Testing run test parsing: " ~ model_name) }}
-  {% set hide_errors = options.get("hide_errors", false) %}
-  {% set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) %}
+  {%- set hide_errors = options.get("hide_errors", false) -%}
+  {%- set mocking_strategy = dbt_unit_testing.get_mocking_strategy(options) -%}
 
-  {% set model_node = dbt_unit_testing.model_node(model_name) %}
-  {% set sql_options = { "fetch_mode": 'DATABASE' if mocking_strategy.database else 'RAW',
-                         "include_all_dependencies": mocking_strategy.full } %}
+  {%- set model_node = dbt_unit_testing.model_node(model_name) -%}
+  {%- set sql_options = { "fetch_mode": 'DATABASE' if mocking_strategy.database else 'RAW',
+                         "include_all_dependencies": mocking_strategy.full } -%}
 
-  {% set model_complete_sql = dbt_unit_testing.build_model_complete_sql(model_node, mocked_models, sql_options) %}
-  {% set columns = dbt_unit_testing.quote_and_join_columns(dbt_unit_testing.extract_columns_list(expectations)) %}
+  {%- set model_complete_sql = dbt_unit_testing.build_model_complete_sql(model_node, mocked_models, sql_options) -%}
+  {%- set columns = dbt_unit_testing.quote_and_join_columns(dbt_unit_testing.extract_columns_list(expectations)) -%}
 
   {%- set actual_query -%}
     select {{columns}} from ( {{ model_complete_sql }} ) as s
@@ -174,7 +173,7 @@
     {% endif %}
   {%- endset -%}
 
-  {% if execute and flags.WHICH == 'test' %}
+  {%- if execute and flags.WHICH == 'test' -%}
     {{ dbt_unit_testing.debug("------------------------------------") }}
     {{ dbt_unit_testing.debug("MODEL: " ~ model_name) }}
     {{ dbt_unit_testing.debug(test_query) }}
@@ -186,15 +185,15 @@
           {{ actual_query }}
         ) as act) as act_count
     {%- endset -%}
-    {% set r1 = run_query(count_query) %}
-    {% set expectations_row_count = r1.columns[0].values() | first %}
-    {% set actual_row_count = r1.columns[1].values() | first %}
+    {%- set r1 = run_query(count_query) -%}
+    {%- set expectations_row_count = r1.columns[0].values() | first -%}
+    {%- set actual_row_count = r1.columns[1].values() | first -%}
 
-    {% set results = run_query(test_query) %}
-    {% set results_length = results.rows | length %}
-    {% set failed = results_length > 0 or expectations_row_count != actual_row_count %}
+    {%- set results = run_query(test_query) -%}
+    {%- set results_length = results.rows | length -%}
+    {%- set failed = results_length > 0 or expectations_row_count != actual_row_count -%}
 
-    {% if failed and not hide_errors %}
+    {%- if failed and not hide_errors -%}
       {%- do log('\x1b[31m' ~ 'MODEL: ' ~ model_name ~ '\x1b[0m', info=true) -%}
       {%- do log('\x1b[31m' ~ 'TEST:  ' ~ test_description ~ '\x1b[0m', info=true) -%}
       {%- set report_file = 'target/unit_testing/failures/' ~ model_name ~ '-' ~ modules.re.sub("[^-_a-zA-Z0-9]", "_", test_description) -%}
@@ -208,23 +207,23 @@
       {%- endif -%}
       {% if expectations_row_count != actual_row_count %}
         {%- do log('\x1b[31m' ~ 'Number of Rows do not match! (Expected: ' ~ expectations_row_count ~ ', Actual: ' ~ actual_row_count ~ ')' ~ '\x1b[0m', info=true) -%}
-      {% endif %}
+      {%- endif -%}
       {% if results_length > 0 %}
         {%- do log('\x1b[31m' ~ 'Rows mismatch:' ~ '\x1b[0m', info=true) -%}
         {%- if dbt_unit_testing.get_config('generate_fail_report_in_csv', false) -%}
-          {% do results.to_csv(csv_report_file) %}
+          {%- do results.to_csv(csv_report_file) -%}
         {%- endif -%}
         {%- if dbt_unit_testing.get_config('generate_fail_report_in_json', false) -%}
-          {% do results.to_json(json_report_file, indent=4) %}
+          {%- do results.to_json(json_report_file, indent=4) -%}
         {%- endif -%}
-        {% do results.print_table(max_columns=None, max_column_width=30) %}
-      {% endif %}
-    {% endif %}
+        {%- do results.print_table(max_columns=None, max_column_width=30) -%}
+      {%- endif -%}
+    {%- endif -%}
     (
       with test_query as (
         {{ test_query }}
       )
       select 1 from (select 1) as t where {{ failed }}
     )
-  {% endif %}
-{% endmacro %}
+  {%- endif -%}
+{%- endmacro -%}
