@@ -99,7 +99,7 @@
           {% endif %}
         {% elif lt == '%%previous_row%%' %}
           {% do rs.current_row.update(rs.rows[rs.current_row_index - 1]) %}
-        {% elif lt in ['array', 'cast', 'timestamp', 'interval', 'time', 'date', 'map', 'uuid'] %}
+        {% elif lt in ['array', 'cast', 'timestamp', 'interval', 'time', 'date', 'map', 'uuid'] and not rs.next_is_key %}
           {% set rs.next_value = lt %}
         {% else %}
           {% if rs.next_is_key %}
