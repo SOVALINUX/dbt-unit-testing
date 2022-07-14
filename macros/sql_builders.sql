@@ -68,7 +68,7 @@
       {%- elif fetch_mode | upper == 'DATABASE' -%}
         {{ dbt_unit_testing.fake_model_sql(node) }}
       {%- else -%}
-        {{ exceptions.raise_compiler_error("Invalid fetch_mode: " ~ fetch_mode) }}
+        {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Invalid fetch_mode: " ~ fetch_mode ~ ", model = " ~ model.name) }}
      {%- endif -%}
     {%- elif node.resource_type == 'seed' -%}
       {{ dbt_unit_testing.fake_seed_sql(node) }}
@@ -79,11 +79,11 @@
 {% endmacro %}
 
 {%- macro fake_model_sql(node) -%}
-  {{ dbt_unit_testing.get_columns_sql(node, node.name, node.columns, "Model " ~ node.name ~ " columns must be declared in schema.yml, or it must exist in database") }}
+  {{ dbt_unit_testing.get_columns_sql(node, node.name, node.columns, "DBT Unit-Testing Error: Model " ~ node.name ~ " columns must be declared in schema.yml, or it must exist in database") }}
 {% endmacro %}
 
 {%- macro fake_source_sql(node) -%}
-  {{ dbt_unit_testing.get_columns_sql(node, node.identifier, node.columns, "Source " ~ node.name ~ " columns must be declared in sources.yml, or it must exist in database") }}
+  {{ dbt_unit_testing.get_columns_sql(node, node.identifier, node.columns, "DBT Unit-Testing Error: Source " ~ node.name ~ " columns must be declared in sources.yml, or it must exist in database") }}
 {% endmacro %}
 
 {% macro fake_seed_sql(node) %}
@@ -93,7 +93,7 @@
     {% do columns.update({c: {"name" : c, "data_type": node.config.column_types[c]} }) %}
     {% endfor %}
   {% endif %}
-  {{ dbt_unit_testing.get_columns_sql(node, node.name, columns, "Seed " ~ node.name ~ " columns must be declared in properties.yml, or it must exist in database") }}
+  {{ dbt_unit_testing.get_columns_sql(node, node.name, columns, "DBT Unit-Testing Error: Seed " ~ node.name ~ " columns must be declared in properties.yml, or it must exist in database") }}
 {% endmacro %}
 
 {% macro get_columns_sql(node, identifier, config_columns, error_message) %}

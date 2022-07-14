@@ -60,7 +60,7 @@
       {% if not node %}
         {% set node = graph.nodes["seed." ~ package_name ~ "." ~ model_name] %}
          {% if not node %}
-           {{ exceptions.raise_compiler_error("Node "  ~ package_name ~ "." ~ model_name ~ " not found.") }}
+           {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Node "  ~ package_name ~ "." ~ model_name ~ " not found.") }}
          {% endif %}
       {% endif %}
     {% endif %}
@@ -99,7 +99,7 @@
 {% macro get_mocking_strategy(options) %}
   {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_test_config("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL'))) %}
   {% if mocking_strategy | upper not in ['FULL', 'SIMPLIFIED', 'DATABASE', 'PURE']%}
-    {{ exceptions.raise_compiler_error("Invalid mocking strategy: '" ~ mocking_strategy ~ "'") }}
+    {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Invalid mocking strategy: '" ~ mocking_strategy ~ "', model = " ~ model.name) }}
   {% endif%}
   {% set full = mocking_strategy | upper == 'FULL' %}
   {% set simplified = mocking_strategy | upper == 'SIMPLIFIED' %}

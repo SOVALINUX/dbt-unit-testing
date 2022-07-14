@@ -153,8 +153,14 @@
     {%- set input_format = options.get("input_format", dbt_unit_testing.get_config("input_format", "sql")) -%}
 
     {%- set input_values_sql = input_values -%}
-	
-	{%- if input_format == "transformed_sql" -%}
+    
+    {%- if input_format == "sql" -%}
+      {%- if options.get("nullish_columns", '') | length > 0 -%}
+        {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Attribute 'nullish_columns' is not supported with 'input_format' = 'sql' in model " ~ model.name) }}
+      {%- endif -%}
+    {%- endif -%}
+    
+    {%- if input_format == "transformed_sql" -%}
       {%- set input_values_sql = dbt_unit_testing.parse_sql_with_transformations(input_values, options) -%}
     {%- endif -%}
 
@@ -177,6 +183,7 @@
   {% set quote_symbol_to_wrap_values = options.get("quote_symbol_to_wrap_values", unit_tests_config.get("quote_symbol_to_wrap_values", "")) %}
   {% set symbol_to_unwrap_values = options.get("symbol_to_unwrap_values", unit_tests_config.get("symbol_to_unwrap_values", "")) %}
   {% set types_to_not_wrap = options.get("types_to_not_wrap", unit_tests_config.get("types_to_not_wrap", [])) %}
+  {% set nullish_columns = options.get("nullish_columns", '').split(',') | map('trim') | reject('==', '') | list %}
   {% set ns = namespace(col_names=[], col_types = [], col_values = [], row_values=[]) %}
 
   {% set rows = csv_table.split(line_separator) | map('trim') | reject('==', '') | list %}
@@ -210,6 +217,10 @@
     {% endfor %}
 
     {% set col_values = ns.col_values | join(",") %}
+    {% for nc in nullish_columns %}
+      {% set col_value = "null as " ~ nc %}
+      {% set ns.col_values = ns.col_values + [col_value] %}
+    {% endfor %}
     {% set sql_row = "select " ~ col_values %}
     {% set ns.row_values = ns.row_values + [sql_row] %}
   {% endfor %}
