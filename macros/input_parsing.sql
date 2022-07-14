@@ -216,11 +216,13 @@
       {% set ns.col_values = ns.col_values + [col_value] %}
     {% endfor %}
 
-    {% set col_values = ns.col_values | join(",") %}
     {% for nc in nullish_columns %}
-      {% set col_value = "null as " ~ nc %}
-      {% set ns.col_values = ns.col_values + [col_value] %}
+      {% if nc not in ns.col_names %}
+        {% set col_value = "null as " ~ nc %}
+        {% set ns.col_values = ns.col_values + [col_value] %}
+      {% endif %}
     {% endfor %}
+    {% set col_values = ns.col_values | join(",") %}
     {% set sql_row = "select " ~ col_values %}
     {% set ns.row_values = ns.row_values + [sql_row] %}
   {% endfor %}
