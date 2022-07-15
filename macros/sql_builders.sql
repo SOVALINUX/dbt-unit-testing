@@ -32,7 +32,8 @@
         {{ cte_dependencies | join(",\n") }}
       {%- endif -%}
       {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', render(model_node.raw_sql), 0, modules.re.M) %}
-      select * from ({{ sql_without_end_semicolon }}) as t
+      select * from ({{ sql_without_end_semicolon }}
+	  ) as t
     {%- endset -%}
 
     {{ return (final_sql) }}
