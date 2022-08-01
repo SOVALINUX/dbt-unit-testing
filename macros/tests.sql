@@ -103,7 +103,7 @@
       {{ dbt_unit_testing.debug(test_query) }}
     {%- endif -%}
     {%- set test_full_name = model_name ~ '-' ~ modules.re.sub("[^-_a-zA-Z0-9]", "_", test_description) -%}
-    {%- set compiled_file = 'target/unit_testing/compiled/' ~ test_full_name ~ '.sql' -%}
+    {%- set compiled_file = 'unit_testing/compiled/' ~ test_full_name ~ '.sql' -%}
     {%- set compiled_test_sql_file = save_content_to_cache(compiled_file, test_query) -%}
     {%- do log('Compiled Test SQL file: ' ~ compiled_test_sql_file, info=true) -%}
 
