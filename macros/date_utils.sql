@@ -33,14 +33,16 @@
     {% do result.update({'+' ~ ind ~ 'd_dt': dbt_unit_testing.n_days_from_now(days=ind, now_posixtime=now_posixtime)}) %}
     {% do result.update({'-' ~ ind ~ 'd_date': result['-' ~ ind ~ 'd_dt'].strftime('%Y-%m-%d')}) %}
     {% do result.update({'+' ~ ind ~ 'd_date': result['+' ~ ind ~ 'd_dt'].strftime('%Y-%m-%d')}) %}
+    {% do result.update({'-' ~ ind ~ 'd_timestamp': result['-' ~ ind ~ 'd_dt'].strftime('%Y-%m-%d %H:%M:%S')}) %}
+    {% do result.update({'+' ~ ind ~ 'd_timestamp': result['+' ~ ind ~ 'd_dt'].strftime('%Y-%m-%d %H:%M:%S')}) %}
     {% do result.update({'-' ~ ind ~ 'd_epoch': dbt_unit_testing.to_epoch(result['-' ~ ind ~ 'd_dt'])}) %}
     {% do result.update({'+' ~ ind ~ 'd_epoch': dbt_unit_testing.to_epoch(result['+' ~ ind ~ 'd_dt'])}) %}
     {% do result.update({'-' ~ ind ~ 'd_posix': dbt_unit_testing.to_posix(result['-' ~ ind ~ 'd_dt'])}) %}
     {% do result.update({'+' ~ ind ~ 'd_posix': dbt_unit_testing.to_posix(result['+' ~ ind ~ 'd_dt'])}) %}
     {% do result.update({'-' ~ ind ~ 'd_micros': (dbt_unit_testing.to_epoch(result['-' ~ ind ~ 'd_dt']) | int) * 1000}) %}
     {% do result.update({'+' ~ ind ~ 'd_micros': (dbt_unit_testing.to_epoch(result['+' ~ ind ~ 'd_dt']) | int) * 1000}) %}
-    {% do result.update({'-' ~ ind ~ 'd_micros_from_date': (dbt_unit_testing.to_epoch(result['-' ~ ind ~ 'd_dt'].replace(hour=0, minute=0, second=0, microsecond=0)) | int) * 1000}) %}
-    {% do result.update({'+' ~ ind ~ 'd_micros_from_date': (dbt_unit_testing.to_epoch(result['+' ~ ind ~ 'd_dt'].replace(hour=0, minute=0, second=0, microsecond=0)) | int) * 1000}) %}
+    {% do result.update({'-' ~ ind ~ 'd_micros_from_timestamp': (dbt_unit_testing.to_epoch(result['-' ~ ind ~ 'd_dt'].replace(microsecond=0)) | int) * 1000}) %}
+    {% do result.update({'+' ~ ind ~ 'd_micros_from_timestamp': (dbt_unit_testing.to_epoch(result['+' ~ ind ~ 'd_dt'].replace(microsecond=0)) | int) * 1000}) %}
   {% endfor %}
   {{ return ( result ) }}
 {% endmacro %}
