@@ -58,12 +58,14 @@ The goal is to write the test, write the model, and then run the test (with “d
 
 ### Available Macros
 
-- **dbt_unit_testing.test** Macro used to defined a test.
+- **dbt_unit_testing.test** Macro used to define a test.
 - **dbt_unit_testing.mock-ref** Macro used to mock a model.
 - **dbt_unit_testing.mock-source** Macro used to mock a source.
-- **dbt_unit_testing.expect** Macro used to defined the test expectations.
+- **dbt_unit_testing.expect** Macro used to define the test expectations.
 - **dbt_unit_testing.ref** Macro used to override dbt ref in dbt models.
 - **dbt_unit_testing.source** Macro used to override dbt source in dbt models.
+- **dbt_unit_testing.generate_n_days_ago_variables** Macro used to conveniently set date/datetime values in a test.
+**Note:** You can set both the **type of time period** ('d_dt', 'd_date', 'd_timestamp', etc.), and **time duration** value based on predefined constants ('1', '10', '100', etc.). Full macro code is available [here](https://github.com/SOVALINUX/dbt-unit-testing/blob/master/macros/date_utils.sql).
 
 ### Skeleton of a test
 
