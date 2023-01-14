@@ -44,10 +44,12 @@
 
 {% macro build_model_dependencies(node, models_names_to_exclude) %}
   {% set model_dependencies = [] %}
+  {% set original_node = node.name %}
   {% for node_id in node.depends_on.nodes %}
     {% set node = dbt_unit_testing.node_by_id(node_id) %}
     {% if node.resource_type in ('model','snapshot') and (models_names_to_exclude is none or node.name not in models_names_to_exclude) %}
-      {% set child_model_dependencies = dbt_unit_testing.build_model_dependencies(node) %}
+      {{ dbt_unit_testing.debug("DBT Unit Testing build_model_dependencies: parent model = '" ~ original_node ~ "', adding 1st level dependency = '" ~ node.name ~ "'") }}
+      {% set child_model_dependencies = dbt_unit_testing.build_model_dependencies(node, models_names_to_exclude) %}
       {% for dependency_node_id in child_model_dependencies %}
         {{ model_dependencies.append(dependency_node_id) }}
       {% endfor %}
