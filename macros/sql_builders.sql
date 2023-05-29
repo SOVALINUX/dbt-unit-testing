@@ -32,7 +32,7 @@
         with
         {{ cte_dependencies | join(",\n") }}
       {%- endif -%}
-      {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', render(model_node.raw_sql), 0, modules.re.M) %}
+      {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', dbt_unit_testing.render_node(model_node.raw_code), 0, modules.re.M) %}
       select * from ({{ sql_without_end_semicolon }}
 	  ) as t
     {%- endset -%}
@@ -67,7 +67,7 @@
       {%- if fetch_mode | upper == 'FULL' -%}
         {{ dbt_unit_testing.build_model_complete_sql(node, {}, {"fetch_mode": 'RAW'}) }}
       {%- elif fetch_mode | upper == 'RAW' -%}
-        {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', render(node.raw_sql), 0, modules.re.M) %}
+        {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', dbt_unit_testing.render_node(node.raw_code), 0, modules.re.M) %}
         {{ sql_without_end_semicolon }}
       {%- elif fetch_mode | upper == 'DATABASE' -%}
         {{ dbt_unit_testing.fake_model_sql(node) }}
@@ -119,4 +119,9 @@
     {% do columns.append("cast(null as " ~ (c.data_type if c.data_type is not none else dbt_utils.type_string()) ~ ") as " ~ dbt_unit_testing.quote_identifier(c.name)) %}
   {% endfor %}
   select {{ columns | join (",") }}
+{% endmacro %}
+
+{% macro render_node(node) %}
+  {% set sql = node.raw_sql if node.raw_sql is defined else node.raw_code %}
+  {{ return (render(sql)) }}
 {% endmacro %}
