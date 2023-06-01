@@ -79,12 +79,12 @@
 
     extra_entries as (
     select '+' as diff, {{columns}} from actual
-    {{ dbt_utils.except() }}
+    {{ dbt.except() }}
     select '+' as diff, {{columns}} from expectations),
 
     missing_entries as (
     select '-' as diff, {{columns}} from expectations
-    {{ dbt_utils.except() }}
+    {{ dbt.except() }}
     select '-' as diff, {{columns}} from actual)
     
     select * from extra_entries
