@@ -51,6 +51,7 @@
     }
   %} 
   {{ return (dbt_unit_testing.append_json(expectations)) }}
+
 {% endmacro %}
 
 {% macro append_json(json) %}

@@ -79,6 +79,14 @@ Both strategies have pros and cons. We think you should use the tests without an
 # Documentation
 
 ## Anatomy of a test
+- **dbt_unit_testing.test** Macro used to define a test.
+- **dbt_unit_testing.mock-ref** Macro used to mock a model.
+- **dbt_unit_testing.mock-source** Macro used to mock a source.
+- **dbt_unit_testing.expect** Macro used to define the test expectations.
+- **dbt_unit_testing.ref** Macro used to override dbt ref in dbt models.
+- **dbt_unit_testing.source** Macro used to override dbt source in dbt models.
+- **dbt_unit_testing.generate_n_days_ago_variables** Macro used to conveniently set date/datetime values in a test.
+**Note:** You can set both the **type of time period** ('d_dt', 'd_date', 'd_timestamp', etc.), and **time duration** value based on predefined constants ('1', '10', '100', etc.). Full macro code is available [here](https://github.com/SOVALINUX/dbt-unit-testing/blob/master/macros/date_utils.sql).
 
 The test is composed of a test setup (mocks) and expectations:
 
@@ -582,7 +590,20 @@ In this situation, you need to add this line to the top of your **test** (**not 
 
 ```
 
-
+The first line was not on the model but the second line was.
+##### Test failures as files
+There is also possible to save failed Unit Tests to file system and review separately.  
+Currently 2 formats of reports supported:  
+1. CSV. It's very convenient to compare multi-column unit test failures as CSV, especially with some Rainbow CSV plugin
+2. JSON. It's useful only for cases when there is a type mismatch (number vs text, null vs empty string)
+To enable report generation add the following to the config and configure per each format separately:
+```yaml
+vars:
+  unit_tests_config:
+    generate_fail_report_in_json: true
+	generate_fail_report_in_csv: true
+```
+Failed test result will be stored in `target/unit_testing/failures/` folder respective file formats.  
 
 # Compatibility
 
