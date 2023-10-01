@@ -186,4 +186,3 @@
     select * from {{ ref(model_name) }}
   {% endset %}
 {% endmacro %}
-

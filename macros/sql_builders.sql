@@ -62,6 +62,7 @@
 
 {% macro build_model_dependencies(node, stop_recursion_at_these_dependencies, only_direct_dependencies=False) %}
   {% set model_dependencies = [] %}
+  {% set original_node = node.name %}
   {% for node_id in node.depends_on.nodes %}
     {% set node = dbt_unit_testing.node_by_id(node_id) %}
     {% if node.resource_type in ('model','snapshot') and node.unique_id not in stop_recursion_at_these_dependencies and not only_direct_dependencies%}
@@ -122,4 +123,3 @@
   {% set rendered_sql = rendered_sql.replace(replace_mask, this_name) %}
   {{ return (rendered_sql) }}
 {% endmacro %}
-
