@@ -13,9 +13,13 @@
 {% endmacro %}
 
 {% macro extract_columns_list(query) %}
-  {% set results = dbt_unit_testing.run_query(query) %}
-  {% set columns = results.columns | map(attribute='name') | list %}
-  {{ return (columns) }}
+  {% if flags.WHICH == 'test' %}
+    {% set results = dbt_unit_testing.run_query(query) %}
+    {% set columns = results.columns | map(attribute='name') | list %}
+    {{ return (columns) }}
+  {% else %}
+    {{ return([]) }}
+  {% endif %}
 {% endmacro %}
 
 {% macro extract_columns_difference(cl1, cl2) %}

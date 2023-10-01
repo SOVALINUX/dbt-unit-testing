@@ -2,7 +2,7 @@
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
 name: "dbt_unit_testing_integration_tests"
-version: "0.1.0"
+version: "0.3.100"
 config-version: 2
 
 profile: "integration_tests"
