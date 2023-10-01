@@ -14,4 +14,3 @@
     select 1 as a, 'b' as b
   {% endcall %}
 {% endcall %}
- 

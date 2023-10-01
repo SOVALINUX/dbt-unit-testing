@@ -1,55 +1,72 @@
-{% macro node_to_sql(database, schema, identifier) %}
-  {{ return(dbt_unit_testing.quote_identifier(database) ~ '.' ~ dbt_unit_testing.quote_identifier(schema) ~ '.' ~ dbt_unit_testing.quote_identifier(identifier))}}
+{% macro build_model_complete_sql(model_node, mocks=[], options={}) %}
+  {% set mock_ids = mocks | rejectattr("options.include_missing_columns", "==", true) | map(attribute="unique_id") | list %}
+  {% set only_direct_dependencies = options.use_database_models %}
+  {% set model_dependencies = dbt_unit_testing.build_model_dependencies(model_node, mock_ids, only_direct_dependencies) %}
+  -- {# add mocks that are not in model dependencies (to allow for mocking the model itself, when testing incremental models) #}
+  {% set model_dependencies = model_dependencies + mocks | map(attribute="unique_id") | reject('in', model_dependencies) | list %}
+
+  {% set cte_dependencies = [] %}
+  {% for node_id in model_dependencies %}
+    {% set node = dbt_unit_testing.node_by_id(node_id) %}
+    {% set existing_mock = mocks | selectattr("unique_id", "==", node_id) | first %}
+    {% set cte_sql = existing_mock.input_values if existing_mock else dbt_unit_testing.build_node_sql(node, options.use_database_models) %}
+    {% set cte_name = dbt_unit_testing.cte_name(existing_mock if existing_mock else node) %}
+    {% set cte = dbt_unit_testing.quote_identifier(cte_name) ~ " as (" ~ cte_sql ~ ")" %}
+    {% set cte_dependencies = cte_dependencies.append(cte) %}
+  {%- endfor -%}
+
+  {% set rendered_node = dbt_unit_testing.render_node_for_model_being_tested(model_node) %}
+  {%- set model_complete_sql -%}
+    {% if cte_dependencies %}
+      with
+      {{ cte_dependencies | join(",\n") }}
+    {%- endif -%}
+    {{ "\n" }}
+    select * from ({{ rendered_node }} {{ "\n" }} ) as t
+  {%- endset -%}
+
+  {{ return(model_complete_sql) }}
 {% endmacro %}
 
-{% macro build_model_complete_sql(model_node, mocked_models, options) %}
-  {% if execute %}
-    {% set include_all_dependencies = options.get("include_all_dependencies", false) %}
-
-    {%- set mocked_models_names = mocked_models.keys() | list %}
-    {%- set cte_dependencies = [] %}
-    {%- set dependencies_to_exclude = none if include_all_dependencies else mocked_models_names %}
-    {%- set model_dependencies = dbt_unit_testing.build_model_dependencies(model_node, dependencies_to_exclude) %}
-	{{ dbt_unit_testing.debug("DBT Unit Testing resolved model dependencies: model = '" ~ model_node.name ~ "', mocked dependencies = '" ~ dependencies_to_exclude ~ "', dependencies to calculate = " ~ model_dependencies) }}
-    {%- for node_id in model_dependencies %}
-      {%- set node = dbt_unit_testing.node_by_id(node_id) %}
-      {%- if node.resource_type == "source" %}
-        {%- set cte_name = node.source_name ~ "__" ~ node.name %}
-      {%- else %}
-        {%- set cte_name = node.name %}
-      {%- endif %}
-      {%- if cte_name in mocked_models_names %}
-        {%- set sql = mocked_models[cte_name] %}
-      {%- else %}
-        {%- set sql = dbt_unit_testing.build_node_sql(node, options) %}
-      {%- endif %}
-      {%- set cte = dbt_unit_testing.quote_identifier(cte_name) ~ " as (" ~ sql ~ "\n)" %}
-      {%- set cte_dependencies = cte_dependencies.append(cte) %}
-    {%- endfor -%}
-
-    {%- set final_sql -%}
-      {% if cte_dependencies %}
-        with
-        {{ cte_dependencies | join(",\n") }}
-      {%- endif -%}
-      {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', dbt_unit_testing.render_node(model_node), 0, modules.re.M) %}
-      select * from ({{ sql_without_end_semicolon }}
-	  ) as t
-    {%- endset -%}
-
-    {{ return (final_sql) }}
-
-  {%- endif -%}
+{% macro cte_name(node) %}
+  {% if node.resource_type in ('source') %}
+    {{ return (dbt_unit_testing.source_cte_name(node)) }}
+  {% else %}
+    {{ return (dbt_unit_testing.ref_cte_name(node)) }}
+  {% endif %}
 {% endmacro %}
 
-{% macro build_model_dependencies(node, models_names_to_exclude) %}
+{% macro ref_cte_name(node) %}
+  {% set node = dbt_unit_testing.model_node(node) %}
+  {% set parts = [node.name] %}
+  {% if node.package_name != model.package_name %}
+    {% set parts = [node.package_name] + parts %}
+  {% endif %}
+  {% if dbt_unit_testing.has_value(node.version)%}
+    {% set parts = parts + [node.version] %}
+  {% endif %}
+  {{ return (dbt_unit_testing.quote_identifier(parts | join("__"))) }}
+{% endmacro %}
+
+{% macro source_cte_name(node) %}
+  {%- set cte_name -%}
+    {%- if dbt_unit_testing.config_is_true("use_qualified_sources") -%}
+      {%- set source_node = dbt_unit_testing.source_node(node) -%}
+      {{ [source_node.source_name, source_node.name] | join("__") }}
+    {%- else -%}
+      {{ node.name }}
+    {%- endif -%}
+  {%- endset -%}
+  {{ return (dbt_unit_testing.quote_identifier(cte_name)) }}
+{% endmacro %}
+
+{% macro build_model_dependencies(node, stop_recursion_at_these_dependencies, only_direct_dependencies=False) %}
   {% set model_dependencies = [] %}
   {% set original_node = node.name %}
   {% for node_id in node.depends_on.nodes %}
     {% set node = dbt_unit_testing.node_by_id(node_id) %}
-    {% if node.resource_type in ('model','snapshot') and (models_names_to_exclude is none or node.name not in models_names_to_exclude) %}
-      {{ dbt_unit_testing.debug("DBT Unit Testing build_model_dependencies: parent model = '" ~ original_node ~ "', adding 1st level dependency = '" ~ node.name ~ "'") }}
-      {% set child_model_dependencies = dbt_unit_testing.build_model_dependencies(node, models_names_to_exclude) %}
+    {% if node.resource_type in ('model','snapshot') and node.unique_id not in stop_recursion_at_these_dependencies and not only_direct_dependencies%}
+      {% set child_model_dependencies = dbt_unit_testing.build_model_dependencies(node, stop_recursion_at_these_dependencies, only_direct_dependencies) %}
       {% for dependency_node_id in child_model_dependencies %}
         {{ model_dependencies.append(dependency_node_id) }}
       {% endfor %}
@@ -60,68 +77,49 @@
   {{ return (model_dependencies | unique | list) }}
 {% endmacro %}
 
-{% macro build_node_sql (node, options) %}
-  {%- if execute -%}
-    {% set fetch_mode = options.get("fetch_mode") %}
-    {%- if node.resource_type in ('model','snapshot') -%}
-      {%- if fetch_mode | upper == 'FULL' -%}
-        {{ dbt_unit_testing.build_model_complete_sql(node, {}, {"fetch_mode": 'RAW'}) }}
-      {%- elif fetch_mode | upper == 'RAW' -%}
-        {% set sql_without_end_semicolon = modules.re.sub(';[\s\r\n]*$', '', dbt_unit_testing.render_node(node), 0, modules.re.M) %}
-        {{ sql_without_end_semicolon }}
-      {%- elif fetch_mode | upper == 'DATABASE' -%}
-        {{ dbt_unit_testing.fake_model_sql(node) }}
-      {%- else -%}
-        {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Invalid fetch_mode: " ~ fetch_mode ~ ", model = " ~ model.name) }}
-     {%- endif -%}
-    {%- elif node.resource_type == 'seed' -%}
-      {{ dbt_unit_testing.fake_seed_sql(node) }}
+{% macro build_node_sql(node, use_database_models=false, complete=false) %}
+  {%- if use_database_models or node.resource_type in ('source', 'seed') -%}
+    {%- if node.resource_type == "source" %}
+      {% set name = node.identifier %}
+    {%- elif node.resource_type == "snapshot" %}
+      {%- if dbt_unit_testing.has_value(node.config.alias) %}
+        {% set name = node.config.alias %}
+      {%- else %}
+        {% set name = node.name %}
+      {%- endif %}
+    {%- else %}
+      {% set name = node.name %}
+    {%- endif %}
+
+    {% set name_parts = dbt_unit_testing.map([node.database, node.schema, name], dbt_unit_testing.quote_identifier) %}
+    select * from {{ name_parts | join('.') }} where false
+  {%- else -%}
+    {% if complete %}
+      {{ dbt_unit_testing.build_model_complete_sql(node) }}
     {%- else -%}
-      {{ dbt_unit_testing.fake_source_sql(node) }}
+      {{ dbt_unit_testing.render_node(node) ~ "\n"}}
     {%- endif -%}
   {%- endif -%}
 {% endmacro %}
 
-{%- macro fake_model_sql(node) -%}
-  {{ dbt_unit_testing.get_columns_sql(node, node.name, node.columns, "DBT Unit-Testing Error: Model " ~ node.name ~ " columns must be declared in schema.yml, or it must exist in database") }}
-{% endmacro %}
-
-{%- macro fake_source_sql(node) -%}
-  {{ dbt_unit_testing.get_columns_sql(node, node.identifier, node.columns, "DBT Unit-Testing Error: Source " ~ node.name ~ " columns must be declared in sources.yml, or it must exist in database") }}
-{% endmacro %}
-
-{% macro fake_seed_sql(node) %}
-  {% set columns = {} %}
-  {% if node.config and node.config.column_types %}
-    {% for c in node.config.column_types.keys() %}
-    {% do columns.update({c: {"name" : c, "data_type": node.config.column_types[c]} }) %}
-    {% endfor %}
-  {% endif %}
-  {{ dbt_unit_testing.get_columns_sql(node, node.name, columns, "DBT Unit-Testing Error: Seed " ~ node.name ~ " columns must be declared in properties.yml, or it must exist in database") }}
-{% endmacro %}
-
-{% macro get_columns_sql(node, identifier, config_columns, error_message) %}
-  {% set columns = adapter.get_columns_in_relation(api.Relation.create(database=node.database, schema=node.schema, identifier=identifier, quote_policy=node.get('quoting', {}))) %}
-  {%- if columns | length > 0 -%}
-    select {{ dbt_unit_testing.quote_and_join_columns(columns | map(attribute='name') | list) }}
-    from {{ dbt_unit_testing.node_to_sql(node.database, node.schema, identifier) }}
-    where false
-  {%- elif config_columns | length > 0 -%}
-    {{ dbt_unit_testing.get_config_columns_sql(config_columns) }}
-  {%- else -%}
-    {{ exceptions.raise_compiler_error(error_message) }}
-  {%- endif -%}
-{% endmacro %}
-
-{% macro get_config_columns_sql(config_columns) %}
-  {% set columns = [] %}
-  {% for c in config_columns.values() %}
-    {% do columns.append("cast(null as " ~ (c.data_type if c.data_type is not none else dbt_utils.type_string()) ~ ") as " ~ dbt_unit_testing.quote_identifier(c.name)) %}
-  {% endfor %}
-  select {{ columns | join (",") }}
-{% endmacro %}
-
 {% macro render_node(node) %}
-  {% set sql = node.raw_sql if node.raw_sql is defined else node.raw_code %}
-  {{ return (render(sql)) }}
+  {% set model_sql = node.raw_sql if node.raw_sql is defined else node.raw_code %}
+  {{ return (render(model_sql)) }}
+{% endmacro %}
+     
+{% macro render_node_for_model_being_tested(node) %}
+  {% set model_sql = node.raw_sql if node.raw_sql is defined else node.raw_code %}
+  {% set model_name = dbt_unit_testing.cte_name(node) %}
+  {% set this_name = this | string %}
+  -- {# If the model contains a 'this' property, we will replace its result with the name of the model being tested #}
+  -- {# but first we mask previous occurrences that could be there before the render (very unlikely to happen) #}
+  -- {# This way we 'ensure' that we only replace stuff produced after the render #}
+  {% set replace_mask = '######################' %}
+  {% set model_sql = model_sql.replace(this_name, replace_mask) %}
+  {{ dbt_unit_testing.set_test_context("model_being_rendered", model_name) }}
+  {% set rendered_sql = render(model_sql) %}
+  {{ dbt_unit_testing.set_test_context("model_being_rendered", "") }}
+  {% set rendered_sql = rendered_sql.replace(this_name, model_name) %}
+  {% set rendered_sql = rendered_sql.replace(replace_mask, this_name) %}
+  {{ return (rendered_sql) }}
 {% endmacro %}

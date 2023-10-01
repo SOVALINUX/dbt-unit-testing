@@ -2,7 +2,7 @@
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
 name: "dbt_unit_testing_integration_tests"
-version: "0.1.0"
+version: "0.3.100"
 config-version: 2
 
 profile: "integration_tests"
@@ -22,9 +22,14 @@ clean-targets: # directories to be removed by `dbt clean`
 
 vars:
   unit_tests_config:
-    debug: false
-    mocking_strategy: full
+    verbose: false
+    use_qualified_sources: true
+    use_database_models: false
+    include_missing_columns: false
+    disable_cache: false
     input_format: sql
     column_separator: ","
     line_separator: "\n"
     type_separator: "::"
+    diff_column: "diff"
+    count_column: "count"
