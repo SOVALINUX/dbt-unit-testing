@@ -15,6 +15,9 @@
     {% set input_str = (input_str + ' ') %}
     {% for s in input_str %}
       {% set ns.char_code = ord(s) %}
+      {% if not ns.is_comment and s == "'" and ns.prev_active_string_term and ns.prev_is_escape %}
+        {% set ns.active_string_term = true %}
+      {% endif %}
       {% set ns.prev_active_string_term = ns.active_string_term %}
       {% if not ns.is_comment %}
         {% if not ns.active_string_term %}
