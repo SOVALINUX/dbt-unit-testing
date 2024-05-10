@@ -1,5 +1,5 @@
 {% macro extract_columns_list(query) %}
-  {% if execute %}
+  {% if execute and flags.WHICH == 'test' %}
     {% set results = run_query(query) %}
     {% set columns = results.columns | map(attribute='name') | list %}
     {{ return (columns) }}
@@ -9,7 +9,7 @@
 {% endmacro %}
 
 {% macro extract_columns_difference(cl1, cl2) %}
-  {% set columns = cl1 | list | reject('in', cl2) | list %}
+  {% set columns = cl1 | map('lower') | list | reject('in', cl2 | map('lower') | list) | list %}
   {{ return(columns) }}
 {% endmacro %}
 
@@ -17,7 +17,6 @@
   {% set columns = dbt_unit_testing.map(columns, dbt_unit_testing.quote_identifier) | join(",") %}
   {{ return (columns) }}
 {% endmacro %}
-
 
 {% macro sql_encode(s) %}
   {{ return (s.replace('"', '####_quote_####').replace('\n', '####_cr_####').replace('\t', '####_tab_####')) }}
@@ -52,14 +51,15 @@
 {% endmacro %}
 
 {% macro model_node (model_name) %}
+  {% set package_name = model.package_name %}
   {% if execute %}
-    {% set node = graph.nodes["model." ~ project_name ~ "." ~ model_name] %}
+    {% set node = graph.nodes["model." ~ package_name ~ "." ~ model_name] %}
     {% if not node %}
-      {% set node = graph.nodes["snapshot." ~ project_name ~ "." ~ model_name] %}
+      {% set node = graph.nodes["snapshot." ~ package_name ~ "." ~ model_name] %}
       {% if not node %}
-        {% set node = graph.nodes["seed." ~ project_name ~ "." ~ model_name] %}
+        {% set node = graph.nodes["seed." ~ package_name ~ "." ~ model_name] %}
          {% if not node %}
-           {{ exceptions.raise_compiler_error("Node "  ~ project_name ~ "." ~ model_name ~ " not found.") }}
+           {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Node "  ~ package_name ~ "." ~ model_name ~ " not found.") }}
          {% endif %}
       {% endif %}
     {% endif %}
@@ -69,7 +69,7 @@
 
 {% macro source_node (source_name, model_name) %}
   {% if execute %}
-    {{ return (graph.sources["source." ~ project_name ~ "." ~ source_name ~ "." ~ model_name]) }}
+    {{ return (graph.sources["source." ~ model.package_name ~ "." ~ source_name ~ "." ~ model_name]) }}
   {% endif %}
 {% endmacro %}
 
@@ -87,13 +87,54 @@
   {{ return (unit_tests_config.get(config_name, default_value))}}
 {% endmacro %}
 
+{% macro get_test_config(config_name, default_value) %}
+  {% set config_value = config.get(config_name) %}
+  {% if config_value is none or (config_value | string | length < 1) %}
+    {% set config_value = (default_value | string) %}
+  {% endif %}
+  {{ return (config_value | string) }}
+{% endmacro %}
+
 {% macro get_mocking_strategy(options) %}
-  {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL')) %}
-  {% if mocking_strategy | upper not in ['FULL', 'SIMPLIFIED', 'DATABASE']%}
-    {{ exceptions.raise_compiler_error("Invalid mocking strategy: " ~ mocking_strategy) }}
+  {% set mocking_strategy = options.get("mocking_strategy", dbt_unit_testing.get_test_config("mocking_strategy", dbt_unit_testing.get_config("mocking_strategy", 'FULL'))) %}
+  {% if mocking_strategy | upper not in ['FULL', 'SIMPLIFIED', 'DATABASE', 'PURE']%}
+    {{ exceptions.raise_compiler_error("DBT Unit-Testing Error: Invalid mocking strategy: '" ~ mocking_strategy ~ "', model = " ~ model.name) }}
   {% endif%}
   {% set full = mocking_strategy | upper == 'FULL' %}
   {% set simplified = mocking_strategy | upper == 'SIMPLIFIED' %}
   {% set database = mocking_strategy | upper == 'DATABASE' %}
-  {{ return ({"full": full, "simplified": simplified, "database": database}) }}
+  {% set pure = mocking_strategy | upper == 'PURE' %}
+  {{ return ({"full": full, "simplified": simplified, "database": database, "pure": pure}) }}
+{% endmacro %}
+
+{% macro quote_identifier(identifier) %}
+    {{ return(adapter.dispatch('quote_identifier','dbt_unit_testing')(identifier)) }}
+{% endmacro %}
+
+{% macro default__quote_identifier(identifier) -%}
+    {% if identifier.startswith('"') %}
+      {{ return(identifier) }}
+    {% else %}
+      {{ return('"' ~ identifier ~ '"') }}
+    {% endif %}
+{%- endmacro %}
+
+{% macro bigquery__quote_identifier(identifier) %}
+    {% if identifier.startswith('`') %}
+      {{ return(identifier) }}
+    {% else %}
+      {{ return('`' ~ identifier ~ '`') }}
+    {% endif %}
+{% endmacro %}
+
+{% macro snowflake__quote_identifier(identifier) %}
+    {% if identifier.startswith('"') %}
+      {{ return(identifier) }}
+    {% else %}
+      {{ return('"' ~ identifier | upper ~ '"') }}
+    {% endif %}
+{% endmacro %}
+
+{% macro databricks__quote_identifier(identifier) %}
+  {{ return('`' ~ identifier | upper ~ '`') }}
 {% endmacro %}
