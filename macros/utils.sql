@@ -18,7 +18,6 @@
   {{ return (columns) }}
 {% endmacro %}
 
-
 {% macro sql_encode(s) %}
   {{ return (s.replace('"', '####_quote_####').replace('\n', '####_cr_####').replace('\t', '####_tab_####')) }}
 {% endmacro %}
@@ -134,4 +133,8 @@
     {% else %}
       {{ return('"' ~ identifier | upper ~ '"') }}
     {% endif %}
+{% endmacro %}
+
+{% macro databricks__quote_identifier(identifier) %}
+  {{ return('`' ~ identifier | upper ~ '`') }}
 {% endmacro %}
